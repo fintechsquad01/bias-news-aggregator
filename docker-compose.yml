@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:14
+    container_name: bias-news-aggregator-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-newsdb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bias-news-aggregator-api
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-newsdb}
+      - POLYGON_API_KEY=${POLYGON_API_KEY}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+      - FINANCIAL_DATASETS_API_KEY=${FINANCIAL_DATASETS_API_KEY}
+      - WHALEWISDOM_API_KEY=${WHALEWISDOM_API_KEY}
+      - SENTIMENT_MODEL_NAME=${SENTIMENT_MODEL_NAME:-finbert}
+      - NEWS_FETCH_INTERVAL_MINUTES=${NEWS_FETCH_INTERVAL_MINUTES:-60}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend React application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bias-news-aggregator-ui
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm start
+
+  # News scheduler service
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bias-news-aggregator-scheduler
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-newsdb}
+      - POLYGON_API_KEY=${POLYGON_API_KEY}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+      - FINANCIAL_DATASETS_API_KEY=${FINANCIAL_DATASETS_API_KEY}
+      - WHALEWISDOM_API_KEY=${WHALEWISDOM_API_KEY}
+      - NEWS_FETCH_INTERVAL_MINUTES=${NEWS_FETCH_INTERVAL_MINUTES:-60}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - ./backend:/app
+    command: python -m app.services.news_scheduler
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
