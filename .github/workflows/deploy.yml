@@ -1,0 +1,14 @@
+name: Deploy (placeholder)
+
+on:
+  workflow_run:
+    workflows: [ "Test & Build" ]
+    types: [ completed ]
+    branches: [ master ]
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "✅ Build passed – add real deploy steps later." 
