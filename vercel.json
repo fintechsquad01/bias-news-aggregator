@@ -10,7 +10,7 @@ cat > vercel.json << 'EOF'
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "rootDirectory": ".",
+        "rootDirectory": "frontend",
         "installCommand": "npm ci --include=dev",
         "buildCommand": "npm run build",
         "distDir": "dist"
@@ -18,14 +18,8 @@ cat > vercel.json << 'EOF'
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "backend/app/main.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "frontend/dist/$1"
-    }
+    { "src": "/api/(.*)", "dest": "backend/app/main.py" },
+    { "src": "/(.*)",      "dest": "frontend/dist/$1"    }
   ],
   "env": {
     "NPM_CONFIG_PRODUCTION": "false"
