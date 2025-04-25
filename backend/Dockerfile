@@ -1,25 +1,28 @@
-# Use an official Python runtime as a parent image
-FROM python:3.10-slim
+###########################
+# 1. Build stage
+###########################
+FROM python:3.11-slim AS builder
+WORKDIR /opt/build
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+COPY backend/requirements.txt .
+RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
 
-# Set working directory
+###########################
+# 2. Runtime stage
+###########################
+FROM python:3.11-slim AS runtime
 WORKDIR /app
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Create non-root user
+RUN addgroup --system app && adduser --system --group app
+USER app
 
-# Install system dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Copy installed deps from builder
+COPY --from=builder /install /usr/local
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy source
+COPY backend /app
 
-# Copy project
-COPY . .
-
-# Run migrations and seed data when container starts
-CMD ["sh", "-c", "alembic upgrade head && python -m app.db.init_db && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+EXPOSE 8000
+ENTRYPOINT ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--access-logfile", "-"]

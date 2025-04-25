@@ -4,15 +4,26 @@
     {
       "src": "backend/app/main.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "rootDirectory": "frontend",
+        "installCommand": "npm install",
+        "buildCommand": "npm run build",
+        "distDir": "dist"
+      }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "backend/app/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "frontend/dist/$1"
     }
-  ],
-  "env": {
-    "APP_ENV": "production"
-  }
+  ]
 }
