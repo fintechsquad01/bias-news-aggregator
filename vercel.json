@@ -25,5 +25,8 @@
       "src": "/(.*)",
       "dest": "frontend/dist/$1"
     }
-  ]
+  ],
+  "env": {
+    "NPM_CONFIG_PRODUCTION": "false"
+  }
 }
