@@ -10,7 +10,7 @@
       "use": "@vercel/static-build",
       "config": {
         "rootDirectory": "frontend",
-        "installCommand": "npm install --include=dev.",
+        "installCommand": "npm install --include=dev",
         "buildCommand": "npm run build",
         "distDir": "dist"
       }
@@ -25,5 +25,8 @@
       "src": "/(.*)",
       "dest": "frontend/dist/$1"
     }
-  ]
+  ],
+  "env": {
+    "NPM_CONFIG_PRODUCTION": "false"
+  }
 }
