@@ -17,16 +17,12 @@
     }
   ],
   "routes": [
-    // 1) API calls go to Python
-    { "src": "/api/(.*)",      "dest": "backend/app/main.py" },
-
-    // 2) Serve your built assets directly
-    { "src": "/assets/(.*)",   "dest": "frontend/dist/assets/$1" },
-
-    // 3) Let Vercel check the filesystem; if file exists, serve it...
+    { "src": "/api/(.*)",    "dest": "backend/app/main.py" },
+    { "src": "/assets/(.*)", "dest": "frontend/dist/assets/$1" },
     { "handle": "filesystem" },
-
-    // 4) ...otherwise fall back to index.html (SPA routing)
-    { "src": "/(.*)",          "dest": "frontend/dist/index.html" }
-  ]
+    { "src": "/(.*)",        "dest": "frontend/dist/index.html" }
+  ],
+  "env": {
+    "NPM_CONFIG_PRODUCTION": "false"
+  }
 }
