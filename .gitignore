@@ -50,3 +50,4 @@ build/
 # Database
 *.sqlite3
 postgres_data/
+.vercel
