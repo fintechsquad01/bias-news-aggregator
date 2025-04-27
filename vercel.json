@@ -1,13 +1,8 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "backend/app/main.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
+    { "src": "backend/app/main.py",     "use": "@vercel/python"         },
+    { "src": "frontend/package.json",   "use": "@vercel/static-build",
       "config": {
         "rootDirectory": "frontend",
         "installCommand": "npm ci --include=dev",
@@ -17,10 +12,10 @@
     }
   ],
   "routes": [
-    { "src": "/api/(.*)",    "dest": "backend/app/main.py" },
-    { "src": "/assets/(.*)", "dest": "frontend/dist/assets/$1" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)",        "dest": "frontend/dist/index.html" }
+    { "src": "/api/(.*)",    "dest": "backend/app/main.py"         },
+    { "src": "/assets/(.*)", "dest": "frontend/dist/assets/$1"     },
+    { "handle": "filesystem"                                      },
+    { "src": "/(.*)",        "dest": "frontend/dist/index.html"    }
   ],
   "env": {
     "NPM_CONFIG_PRODUCTION": "false"
