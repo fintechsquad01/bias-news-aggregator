@@ -9,10 +9,9 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "rootDirectory": "frontend",
         "installCommand": "npm ci --include=dev",
         "buildCommand": "npm run build",
-        "distDir": "dist"
+        "distDir": "frontend/dist"
       }
     }
   ],
@@ -22,15 +21,11 @@
       "dest": "backend/app/main.py"
     },
     {
-      "src": "/assets/(.*)",
-      "dest": "dist/assets/$1"
-    },
-    {
       "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "dist/index.html"
+      "dest": "/index.html"
     }
   ],
   "env": {
