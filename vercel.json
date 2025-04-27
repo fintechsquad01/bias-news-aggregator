@@ -9,24 +9,17 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
+        "rootDirectory": "frontend",
         "installCommand": "npm ci --include=dev",
         "buildCommand": "npm run build",
-        "distDir": "frontend/dist"
+        "distDir": "dist"
       }
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "backend/app/main.py"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+    { "src": "/api/(.*)", "dest": "backend/app/main.py" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ],
   "env": {
     "NPM_CONFIG_PRODUCTION": "false"
