@@ -60,3 +60,6 @@ coverage/
 # Database
 *.sqlite3
 postgres_data/
+
+# Supabase local config
+supabase/
