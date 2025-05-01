@@ -8,6 +8,8 @@ from app.services.polygon_service import PolygonNewsService
 from app.services.financial_datasets_service import FinancialDatasetsService
 from app.services.whalewisdom_service import WhaleWisdomService
 from app.services.finnhub_service import FinnhubService
+from app.services.sentiment_analysis_service import analyze_text
+from app.services.bias_detection_service import detect_bias
 from app.models.models import Article
 from app.models.schemas import ArticleCreate, BiasCategory, SentimentCategory
 from app.core.config import settings
@@ -103,6 +105,17 @@ class NewsProcessor:
                 
             published_date = datetime.fromisoformat(published_str.replace("Z", "+00:00"))
             
+            # Get article text for analysis
+            article_text = f"{article.get('title', '')} {article.get('description', '')}"
+            
+            # Perform sentiment analysis
+            sentiment_result = analyze_text(article_text)
+            sentiment_label = sentiment_result.get('sentiment', SentimentCategory.NEUTRAL)
+            sentiment_confidence = sentiment_result.get('confidence', None)
+            
+            # Perform bias detection
+            bias_score = detect_bias(article_text)
+            
             # Create standardized article
             return ArticleCreate(
                 ticker=ticker,
@@ -111,7 +124,9 @@ class NewsProcessor:
                 url=article.get("article_url", ""),
                 source=source,
                 bias_label=self._get_bias_for_source(source_domain),
-                sentiment_label=SentimentCategory.NEUTRAL,  # Will be updated by sentiment analysis module
+                sentiment_label=sentiment_label,
+                sentiment_confidence=sentiment_confidence,
+                bias_score=bias_score,
                 published_date=published_date
             )
         except Exception as e:
@@ -132,6 +147,17 @@ class NewsProcessor:
                 
             published_date = datetime.fromisoformat(published_str.replace("Z", "+00:00"))
             
+            # Get article text for analysis
+            article_text = f"{article.get('title', '')} {article.get('summary', '')}"
+            
+            # Perform sentiment analysis
+            sentiment_result = analyze_text(article_text)
+            sentiment_label = sentiment_result.get('sentiment', SentimentCategory.NEUTRAL)
+            sentiment_confidence = sentiment_result.get('confidence', None)
+            
+            # Perform bias detection
+            bias_score = detect_bias(article_text)
+            
             # Create standardized article
             return ArticleCreate(
                 ticker=ticker,
@@ -140,7 +166,9 @@ class NewsProcessor:
                 url=article.get("url", ""),
                 source=source,
                 bias_label=self._get_bias_for_source(source_domain),
-                sentiment_label=SentimentCategory.NEUTRAL,  # Will be updated by sentiment analysis module
+                sentiment_label=sentiment_label,
+                sentiment_confidence=sentiment_confidence,
+                bias_score=bias_score,
                 published_date=published_date
             )
         except Exception as e:
@@ -161,6 +189,17 @@ class NewsProcessor:
                 
             published_date = datetime.fromtimestamp(published_timestamp)
             
+            # Get article text for analysis
+            article_text = f"{article.get('headline', '')} {article.get('summary', '')}"
+            
+            # Perform sentiment analysis
+            sentiment_result = analyze_text(article_text)
+            sentiment_label = sentiment_result.get('sentiment', SentimentCategory.NEUTRAL)
+            sentiment_confidence = sentiment_result.get('confidence', None)
+            
+            # Perform bias detection
+            bias_score = detect_bias(article_text)
+            
             # Create standardized article
             return ArticleCreate(
                 ticker=ticker,
@@ -169,7 +208,9 @@ class NewsProcessor:
                 url=article.get("url", ""),
                 source=source,
                 bias_label=self._get_bias_for_source(source_domain),
-                sentiment_label=SentimentCategory.NEUTRAL,  # Will be updated by sentiment analysis module
+                sentiment_label=sentiment_label,
+                sentiment_confidence=sentiment_confidence,
+                bias_score=bias_score,
                 published_date=published_date
             )
         except Exception as e:

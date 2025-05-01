@@ -33,6 +33,8 @@ class ArticleCreate(ArticleBase):
     """Schema for creating a new article."""
     bias_label: BiasCategory
     sentiment_label: SentimentCategory
+    sentiment_confidence: Optional[float] = None
+    bias_score: Optional[float] = None
     embedding_vector: Optional[List[float]] = None
 
 
@@ -41,6 +43,8 @@ class ArticleResponse(ArticleBase):
     id: int
     bias_label: BiasCategory
     sentiment_label: SentimentCategory
+    sentiment_confidence: Optional[float] = None
+    bias_score: Optional[float] = None
     created_at: datetime
 
     class Config:

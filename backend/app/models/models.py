@@ -19,6 +19,8 @@ class Article(Base):
     source = Column(String, nullable=False)
     bias_label = Column(Enum(BiasCategory), nullable=False)
     sentiment_label = Column(Enum(SentimentCategory), nullable=False)
+    sentiment_confidence = Column(Float, nullable=True)
+    bias_score = Column(Float, nullable=True)
     published_date = Column(DateTime, nullable=False, index=True)
     embedding_vector = Column(ARRAY(Float), nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
