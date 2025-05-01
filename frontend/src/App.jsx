@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
@@ -42,15 +42,13 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/ticker/:symbol" element={<TickerPage />} />
-          <Route path="/portfolio" element={<PortfolioPage />} />
-        </Routes>
-        <Footer />
-      </Router>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/ticker/:symbol" element={<TickerPage />} />
+        <Route path="/portfolio" element={<PortfolioPage />} />
+      </Routes>
+      <Footer />
     </ThemeProvider>
   );
 }

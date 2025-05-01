@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress, Alert, Grid, Card, CardContent, Container, Paper } from '@mui/material';
-import axios from 'axios';
+import api from '../services/api';
 
 import FeaturedNews from '../components/FeaturedNews';
 import TrendingTickers from '../components/TrendingTickers';
 import BiasLegend from '../components/BiasLegend';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 const HomePage = () => {
   const [loading, setLoading] = useState(true);
@@ -22,8 +20,8 @@ const HomePage = () => {
         // In a real implementation, this would be an API call
         // For now, we'll simulate API response
         
-        // Fetch trending news
-        const response = await axios.get(`${API_BASE_URL}/news/trending`);
+        // Fetch trending news using the api service
+        const response = await api.get(`/news/trending`);
         setTrendingNews(response.data);
         
       } catch (err) {

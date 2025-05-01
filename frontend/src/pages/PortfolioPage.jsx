@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress, Alert, Grid, Card, CardContent, Container, Paper, TextField, Button, Chip, Divider } from '@mui/material';
-import axios from 'axios';
+import api from '../services/api';
 
 import BiasDistributionChart from '../components/BiasDistributionChart';
 import SentimentDistributionChart from '../components/SentimentDistributionChart';
 import NewsArticleList from '../components/NewsArticleList';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 const PortfolioPage = () => {
   const [loading, setLoading] = useState(true);
@@ -26,9 +24,9 @@ const PortfolioPage = () => {
         // In a real implementation, this would be an API call
         // For now, we'll simulate API response
         
-        // Fetch portfolio analysis
+        // Fetch portfolio analysis using the api service
         const tickersParam = tickers.join(',');
-        const response = await axios.get(`${API_BASE_URL}/analysis/portfolio?tickers=${tickersParam}`);
+        const response = await api.get(`/analysis/portfolio?tickers=${tickersParam}`);
         setPortfolioData(response.data);
         
       } catch (err) {
@@ -50,8 +48,8 @@ const PortfolioPage = () => {
       if (!selectedTicker) return;
       
       try {
-        // Fetch news for selected ticker
-        const response = await axios.get(`${API_BASE_URL}/news?ticker=${selectedTicker}&limit=5`);
+        // Fetch news for selected ticker using the api service
+        const response = await api.get(`/news?ticker=${selectedTicker}&limit=5`);
         setTickerNews(response.data);
       } catch (err) {
         console.error(`Error fetching news for ${selectedTicker}:`, err);

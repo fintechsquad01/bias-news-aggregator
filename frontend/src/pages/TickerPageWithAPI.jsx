@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress, Alert, Grid, Card, CardContent, Divider } from '@mui/material';
-import axios from 'axios';
+import api from '../services/api';
 
 import BiasDistributionChart from '../components/BiasDistributionChart';
 import SentimentDistributionChart from '../components/SentimentDistributionChart';
 import NewsArticleList from '../components/NewsArticleList';
 import BiasLegend from '../components/BiasLegend';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 const TickerPage = ({ ticker }) => {
   const [loading, setLoading] = useState(true);
@@ -27,12 +25,12 @@ const TickerPage = ({ ticker }) => {
         // In a real implementation, these would be API calls
         // For now, we'll simulate API responses
         
-        // Fetch ticker analysis
-        const analysisResponse = await axios.get(`${API_BASE_URL}/analysis/ticker/${ticker}/analysis`);
+        // Fetch ticker analysis using the api service
+        const analysisResponse = await api.get(`/analysis/ticker/${ticker}/analysis`);
         const analysisData = analysisResponse.data;
         
-        // Fetch news articles
-        const newsResponse = await axios.get(`${API_BASE_URL}/news?ticker=${ticker}&limit=10`);
+        // Fetch news articles using the api service
+        const newsResponse = await api.get(`/news?ticker=${ticker}&limit=10`);
         const newsData = newsResponse.data;
         
         // Update state with fetched data

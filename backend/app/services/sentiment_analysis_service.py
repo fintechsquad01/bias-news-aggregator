@@ -1,7 +1,10 @@
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+import torch.nn.functional as F
 
 from app.models.models import Article
 from app.models.schemas import SentimentCategory
@@ -10,12 +13,83 @@ from app.services.sentiment_analyzer import SentimentAnalyzer
 logger = logging.getLogger(__name__)
 
 class SentimentAnalysisService:
-    """Service for analyzing sentiment in news articles."""
+    """Service for analyzing sentiment in news articles using FinBERT."""
     
     def __init__(self, db: Session):
         self.db = db
-        self.analyzer = SentimentAnalyzer()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.tokenizer = None
+        self.model = None
+        self._load_model()
         
+    def _load_model(self) -> None:
+        """Load the FinBERT model and tokenizer."""
+        try:
+            model_name = "ProsusAI/finbert"
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
+            self.model.to(self.device)
+            logger.info("FinBERT model loaded successfully")
+        except Exception as e:
+            logger.error(f"Error loading FinBERT model: {str(e)}")
+            raise
+            
+    def _map_finbert_to_sentiment(self, label: str, confidence: float) -> Tuple[SentimentCategory, float]:
+        """
+        Map FinBERT labels to application sentiment categories.
+        
+        Args:
+            label: FinBERT label ('positive', 'negative', 'neutral')
+            confidence: Model confidence score
+            
+        Returns:
+            Tuple of (SentimentCategory, confidence)
+        """
+        mapping = {
+            'positive': SentimentCategory.BULLISH,
+            'negative': SentimentCategory.BEARISH,
+            'neutral': SentimentCategory.NEUTRAL
+        }
+        return mapping.get(label, SentimentCategory.NEUTRAL), confidence
+        
+    def analyze_text(self, text: str) -> Tuple[SentimentCategory, float]:
+        """
+        Analyze sentiment of a given text using FinBERT.
+        
+        Args:
+            text: Text to analyze
+            
+        Returns:
+            Tuple of (SentimentCategory, confidence_score)
+            
+        Raises:
+            RuntimeError: If model is not loaded or prediction fails
+        """
+        if not self.model or not self.tokenizer:
+            raise RuntimeError("FinBERT model not loaded")
+            
+        try:
+            # Tokenize and prepare input
+            inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            
+            # Get model predictions
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+                probabilities = F.softmax(outputs.logits, dim=-1)
+                confidence, predicted_class = torch.max(probabilities, dim=-1)
+                
+            # Get label and confidence
+            label = self.model.config.id2label[predicted_class.item()]
+            confidence_score = confidence.item()
+            
+            # Map to application sentiment categories
+            return self._map_finbert_to_sentiment(label, confidence_score)
+            
+        except Exception as e:
+            logger.error(f"Error analyzing text: {str(e)}")
+            raise RuntimeError(f"Failed to analyze text: {str(e)}")
+            
     def analyze_article_sentiment(self, article_id: int) -> SentimentCategory:
         """
         Analyze sentiment for a specific article.
@@ -33,14 +107,20 @@ class SentimentAnalysisService:
             logger.warning(f"Article with ID {article_id} not found")
             return SentimentCategory.NEUTRAL
             
-        # Analyze sentiment
-        sentiment = self.analyzer.analyze_article(article)
-        
-        # Update article
-        article.sentiment_label = sentiment
-        self.db.commit()
-        
-        return sentiment
+        try:
+            # Analyze sentiment
+            sentiment, confidence = self.analyze_text(article.content)
+            
+            # Update article
+            article.sentiment_label = sentiment
+            article.sentiment_confidence = confidence
+            self.db.commit()
+            
+            return sentiment
+            
+        except Exception as e:
+            logger.error(f"Error analyzing article {article_id}: {str(e)}")
+            return SentimentCategory.NEUTRAL
     
     def batch_analyze_articles(self, limit: int = 100) -> int:
         """
