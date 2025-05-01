@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     
     # CORS settings
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost", "http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: Optional[str] = None
     
     # External API keys
     POLYGON_API_KEY: Optional[str] = None
@@ -22,6 +23,12 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     REDDIT_CLIENT_ID: Optional[str] = None
     REDDIT_CLIENT_SECRET: Optional[str] = None
+    FINANCIAL_DATASETS_API_KEY: Optional[str] = None
+    WHALEWISDOM_API_KEY: Optional[str] = None
+    
+    # Supabase settings
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
     
     # News fetch settings
     NEWS_FETCH_INTERVAL_MINUTES: int = 5
@@ -30,6 +37,10 @@ class Settings(BaseSettings):
     # Security settings (if implementing user auth)
     SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecretkey")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    JWT_SECRET: Optional[str] = None
+    
+    # Environment settings
+    NODE_ENV: Optional[str] = None
     
     # NLP settings
     SENTIMENT_MODEL_NAME: str = "ProsusAI/finbert"
