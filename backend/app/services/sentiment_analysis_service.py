@@ -34,7 +34,7 @@ class SentimentAnalysisService:
             logger.error(f"Error loading FinBERT model: {str(e)}")
             raise
             
-    def _map_finbert_to_sentiment(self, label: str, confidence: float) -> Tuple[SentimentCategory, float]:
+    def _map_finbert_to_sentiment(self, label: str, confidence: float) -> Dict[str, Any]:
         """
         Map FinBERT labels to application sentiment categories.
         
@@ -43,16 +43,19 @@ class SentimentAnalysisService:
             confidence: Model confidence score
             
         Returns:
-            Tuple of (SentimentCategory, confidence)
+            Dictionary containing sentiment category and confidence score
         """
         mapping = {
             'positive': SentimentCategory.BULLISH,
             'negative': SentimentCategory.BEARISH,
             'neutral': SentimentCategory.NEUTRAL
         }
-        return mapping.get(label, SentimentCategory.NEUTRAL), confidence
+        return {
+            'sentiment': mapping.get(label, SentimentCategory.NEUTRAL),
+            'confidence': confidence
+        }
         
-    def analyze_text(self, text: str) -> Tuple[SentimentCategory, float]:
+    def analyze_text(self, text: str) -> Dict[str, Any]:
         """
         Analyze sentiment of a given text using FinBERT.
         
@@ -60,7 +63,9 @@ class SentimentAnalysisService:
             text: Text to analyze
             
         Returns:
-            Tuple of (SentimentCategory, confidence_score)
+            Dictionary containing:
+                - sentiment: SentimentCategory enum value
+                - confidence: float between 0 and 1
             
         Raises:
             RuntimeError: If model is not loaded or prediction fails
@@ -83,7 +88,7 @@ class SentimentAnalysisService:
             label = self.model.config.id2label[predicted_class.item()]
             confidence_score = confidence.item()
             
-            # Map to application sentiment categories
+            # Map to application sentiment categories and return as dictionary
             return self._map_finbert_to_sentiment(label, confidence_score)
             
         except Exception as e:
@@ -109,14 +114,14 @@ class SentimentAnalysisService:
             
         try:
             # Analyze sentiment
-            sentiment, confidence = self.analyze_text(article.content)
+            result = self.analyze_text(article.content)
             
             # Update article
-            article.sentiment_label = sentiment
-            article.sentiment_confidence = confidence
+            article.sentiment_label = result['sentiment']
+            article.sentiment_confidence = result['confidence']
             self.db.commit()
             
-            return sentiment
+            return result['sentiment']
             
         except Exception as e:
             logger.error(f"Error analyzing article {article_id}: {str(e)}")
