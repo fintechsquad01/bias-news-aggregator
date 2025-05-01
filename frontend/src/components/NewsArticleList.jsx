@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Typography, Card, CardContent, Chip, Link, Grid, Divider } from '@mui/material';
 import { format } from 'date-fns';
 import ConfidenceBadge from './ConfidenceBadge';
+import BiasSpectrum from './BiasSpectrum';
 import { calculateConfidenceScore } from '../utils/confidenceUtils';
 
 const getBiasColor = (biasLabel) => {
@@ -79,6 +80,13 @@ const NewsArticleList = ({ articles }) => {
                   {article.summary}
                 </Typography>
               </Grid>
+              {article.bias_score !== null && article.bias_score !== undefined && (
+                <Grid item xs={12}>
+                  <Box sx={{ mb: 2 }}>
+                    <BiasSpectrum biasScore={article.bias_score} />
+                  </Box>
+                </Grid>
+              )}
               <Grid item xs={12}>
                 <Divider sx={{ mb: 1 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
