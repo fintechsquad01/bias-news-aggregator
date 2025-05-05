@@ -1,6 +1,9 @@
+import os
+from typing import Dict, Any, List, Optional
+import requests
 from transformers import pipeline
+import numpy as np
 import logging
-from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 
 from app.models.models import Article, Source
@@ -10,103 +13,131 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class SentimentAnalyzer:
-    """Analyze sentiment of news articles."""
+    """Service for analyzing sentiment in financial news articles"""
     
     def __init__(self):
         # Initialize sentiment analysis pipeline
         try:
+            # Use FinBERT model specifically trained for financial sentiment
             self.sentiment_pipeline = pipeline(
                 "sentiment-analysis",
-                model=settings.SENTIMENT_MODEL_NAME,
-                tokenizer=settings.SENTIMENT_MODEL_NAME
+                model="ProsusAI/finbert",
+                tokenizer="ProsusAI/finbert"
             )
-            logger.info(f"Sentiment analysis model {settings.SENTIMENT_MODEL_NAME} loaded successfully")
         except Exception as e:
-            logger.error(f"Error loading sentiment model: {str(e)}")
+            print(f"Error initializing sentiment pipeline: {e}")
             self.sentiment_pipeline = None
     
-    def analyze_sentiment(self, text: str) -> SentimentCategory:
+    def analyze_text(self, text: str, ticker: str = None) -> Dict[str, Any]:
         """
-        Analyze sentiment of text and return sentiment category.
+        Analyze the sentiment of a text
         
         Args:
-            text: Text to analyze
+            text: The text to analyze (headline or summary)
+            ticker: Optional ticker symbol for context
             
         Returns:
-            SentimentCategory enum value
+            Dictionary with sentiment_label, sentiment_score, and confidence_score
         """
         if not self.sentiment_pipeline:
-            logger.warning("Sentiment pipeline not available, returning NEUTRAL")
-            return SentimentCategory.NEUTRAL
-            
+            # Default to neutral if pipeline not available
+            return {
+                "sentiment_label": "neutral",
+                "sentiment_score": 0.0,
+                "confidence_score": 0.0
+            }
+        
         try:
-            # Truncate text if too long
-            max_length = 512
-            if len(text) > max_length:
-                text = text[:max_length]
-                
-            # Get sentiment prediction
-            result = self.sentiment_pipeline(text)[0]
-            label = result['label']
-            score = result['score']
-            
-            # Map FinBERT labels to our sentiment categories
-            # FinBERT typically uses 'positive', 'negative', 'neutral'
-            if label.lower() == 'positive':
-                return SentimentCategory.BULLISH
-            elif label.lower() == 'negative':
-                return SentimentCategory.BEARISH
+            # Add ticker context if provided
+            if ticker:
+                analysis_text = f"{ticker}: {text}"
             else:
-                return SentimentCategory.NEUTRAL
-                
+                analysis_text = text
+            
+            # Truncate text if too long (model has token limits)
+            if len(analysis_text) > 512:
+                analysis_text = analysis_text[:512]
+            
+            # Run sentiment analysis
+            result = self.sentiment_pipeline(analysis_text)[0]
+            
+            # Map FinBERT labels to our labels
+            label_mapping = {
+                "positive": "bullish",
+                "negative": "bearish",
+                "neutral": "neutral"
+            }
+            
+            # Map score to -1 to 1 range
+            # FinBERT gives confidence scores, we need to convert to a directional score
+            raw_label = result["label"]
+            confidence = result["score"]  # Between 0 and 1
+            
+            if raw_label == "positive":
+                score = confidence
+            elif raw_label == "negative":
+                score = -confidence
+            else:
+                score = 0.0
+            
+            return {
+                "sentiment_label": label_mapping.get(raw_label, "neutral"),
+                "sentiment_score": score,
+                "confidence_score": confidence
+            }
         except Exception as e:
-            logger.error(f"Error analyzing sentiment: {str(e)}")
-            return SentimentCategory.NEUTRAL
+            print(f"Error analyzing sentiment: {e}")
+            # Default to neutral on error
+            return {
+                "sentiment_label": "neutral",
+                "sentiment_score": 0.0,
+                "confidence_score": 0.0
+            }
     
-    def analyze_article(self, article: Article) -> SentimentCategory:
+    def analyze_article(self, article: Dict[str, Any], ticker: str) -> Dict[str, Any]:
         """
-        Analyze sentiment of an article.
+        Analyze the sentiment of a news article
         
         Args:
-            article: Article object to analyze
+            article: Dictionary with article data (headline, summary)
+            ticker: Ticker symbol the article is about
             
         Returns:
-            SentimentCategory enum value
+            Dictionary with sentiment analysis results
         """
-        # Combine headline and summary for better context
-        text = f"{article.headline} {article.summary}"
-        return self.analyze_sentiment(text)
+        # Combine headline and summary for analysis
+        headline = article.get("headline", "")
+        summary = article.get("summary", "")
+        
+        # Prioritize headline but use summary if headline is too short
+        if len(headline) > 20:
+            analysis_text = headline
+        elif summary:
+            analysis_text = summary
+        else:
+            analysis_text = headline
+        
+        return self.analyze_text(analysis_text, ticker)
     
-    def batch_analyze_articles(self, db: Session, limit: int = 100) -> int:
+    def batch_analyze(self, articles: List[Dict[str, Any]], ticker: str) -> List[Dict[str, Any]]:
         """
-        Analyze sentiment for articles that don't have sentiment yet.
+        Analyze sentiment for a batch of articles
         
         Args:
-            db: Database session
-            limit: Maximum number of articles to analyze
+            articles: List of article dictionaries
+            ticker: Ticker symbol the articles are about
             
         Returns:
-            Number of articles analyzed
+            List of articles with sentiment analysis added
         """
-        # Get articles without sentiment analysis
-        articles = db.query(Article).filter(
-            Article.sentiment_label == SentimentCategory.NEUTRAL
-        ).limit(limit).all()
+        results = []
         
-        count = 0
         for article in articles:
-            try:
-                # Analyze sentiment
-                sentiment = self.analyze_article(article)
-                
-                # Update article
-                article.sentiment_label = sentiment
-                count += 1
-                
-            except Exception as e:
-                logger.error(f"Error analyzing article {article.id}: {str(e)}")
+            sentiment = self.analyze_article(article, ticker)
+            article["sentiment"] = sentiment
+            results.append(article)
         
-        # Commit changes
-        db.commit()
-        
-        return count
+        return results
+
+# Create singleton instance
+sentiment_analyzer = SentimentAnalyzer()

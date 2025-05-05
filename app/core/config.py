@@ -8,4 +8,4 @@ class Settings:
         self.API_V1_STR: str = "/api/v1"
         self.SQLALCHEMY_DATABASE_URI: str = os.getenv("DATABASE_URL", "sqlite:///news_aggregator.db")
 
-settings = Settings()
+settings = Settings() 

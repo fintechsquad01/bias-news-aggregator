@@ -1,6 +1,9 @@
 import React from 'react';
 import { Box, Typography, Card, CardContent, Chip, Link, Grid, Divider } from '@mui/material';
 import { format } from 'date-fns';
+import ConfidenceBadge from './ConfidenceBadge';
+import BiasSpectrum from './BiasSpectrum';
+import { calculateConfidenceScore } from '../utils/confidenceUtils';
 
 const getBiasColor = (biasLabel) => {
   const biasColors = {
@@ -77,10 +80,17 @@ const NewsArticleList = ({ articles }) => {
                   {article.summary}
                 </Typography>
               </Grid>
+              {article.bias_score !== null && article.bias_score !== undefined && (
+                <Grid item xs={12}>
+                  <Box sx={{ mb: 2 }}>
+                    <BiasSpectrum biasScore={article.bias_score} />
+                  </Box>
+                </Grid>
+              )}
               <Grid item xs={12}>
                 <Divider sx={{ mb: 1 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1, sm: 0 } }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1, sm: 0 }, gap: 1 }}>
                     <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
                       {article.source}
                     </Typography>
@@ -90,7 +100,6 @@ const NewsArticleList = ({ articles }) => {
                       sx={{ 
                         bgcolor: getBiasColor(article.bias_label),
                         color: ['left', 'right'].includes(article.bias_label) ? 'white' : 'inherit',
-                        mr: 1
                       }} 
                     />
                     <Chip 
@@ -101,6 +110,11 @@ const NewsArticleList = ({ articles }) => {
                         color: article.sentiment_label !== 'neutral' ? 'white' : 'inherit'
                       }} 
                     />
+                    {article.sentiment_confidence !== null && article.sentiment_confidence !== undefined && (
+                      <ConfidenceBadge 
+                        confidenceLevel={calculateConfidenceScore(article.sentiment_confidence)} 
+                      />
+                    )}
                   </Box>
                   <Typography variant="body2" color="text.secondary">
                     {format(new Date(article.published_date), 'MMM d, yyyy')}

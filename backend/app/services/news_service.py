@@ -1,10 +1,155 @@
-from sqlalchemy.orm import Session
-from typing import List, Dict, Any, Optional
+import os
+import requests
 from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
+from sqlalchemy.orm import Session
 
 from app.models.models import Article
 from app.models.schemas import BiasDistribution, ArticleResponse
 
+# API keys from environment variables
+POLYGON_API_KEY = os.getenv("POLYGON_API_KEY")
+FINANCIAL_DATASETS_API_KEY = os.getenv("FINANCIAL_DATASETS_API_KEY")
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
+
+class NewsService:
+    """Service for fetching news from various sources"""
+    
+    def get_news_for_ticker(self, ticker: str, days: int = 7) -> List[Dict[str, Any]]:
+        """
+        Get news for a specific ticker from multiple sources
+        
+        Args:
+            ticker: Stock ticker symbol
+            days: Number of days to look back
+            
+        Returns:
+            List of news articles
+        """
+        # Calculate date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        # Format dates for API requests
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
+        
+        # Fetch from multiple sources and combine results
+        polygon_news = self._get_polygon_news(ticker, start_date_str, end_date_str)
+        finnhub_news = self._get_finnhub_news(ticker, start_date.timestamp(), end_date.timestamp())
+        
+        # Combine and deduplicate news (based on URL)
+        all_news = polygon_news + finnhub_news
+        unique_news = self._deduplicate_news(all_news)
+        
+        return unique_news
+    
+    def _get_polygon_news(self, ticker: str, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+        """Fetch news from Polygon.io"""
+        if not POLYGON_API_KEY:
+            print("Warning: POLYGON_API_KEY not set")
+            return []
+            
+        url = f"https://api.polygon.io/v2/reference/news"
+        params = {
+            "ticker": ticker,
+            "published_utc.gte": start_date,
+            "published_utc.lte": end_date,
+            "limit": 100,
+            "apiKey": POLYGON_API_KEY
+        }
+        
+        try:
+            response = requests.get(url, params=params) 
+            response.raise_for_status()
+            data = response.json()
+            
+            # Transform to standard format
+            articles = []
+            for item in data.get("results", []):
+                articles.append({
+                    "headline": item.get("title", ""),
+                    "summary": item.get("description", ""),
+                    "url": item.get("article_url", ""),
+                    "image_url": item.get("image_url", ""),
+                    "published_date": item.get("published_utc", ""),
+                    "source": {
+                        "name": item.get("publisher", {}).get("name", ""),
+                        "domain": self._extract_domain(item.get("article_url", ""))
+                    }
+                })
+            
+            return articles
+        except Exception as e:
+            print(f"Error fetching news from Polygon: {e}")
+            return []
+    
+    def _get_finnhub_news(self, ticker: str, start_timestamp: float, end_timestamp: float) -> List[Dict[str, Any]]:
+        """Fetch news from Finnhub"""
+        if not FINNHUB_API_KEY:
+            print("Warning: FINNHUB_API_KEY not set")
+            return []
+            
+        url = "https://finnhub.io/api/v1/company-news"
+        params = {
+            "symbol": ticker,
+            "from": datetime.fromtimestamp(start_timestamp).strftime("%Y-%m-%d"),
+            "to": datetime.fromtimestamp(end_timestamp).strftime("%Y-%m-%d"),
+            "token": FINNHUB_API_KEY
+        }
+        
+        try:
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Transform to standard format
+            articles = []
+            for item in data:
+                articles.append({
+                    "headline": item.get("headline", ""),
+                    "summary": item.get("summary", ""),
+                    "url": item.get("url", ""),
+                    "image_url": item.get("image", ""),
+                    "published_date": datetime.fromtimestamp(item.get("datetime", 0)).isoformat(),
+                    "source": {
+                        "name": item.get("source", ""),
+                        "domain": self._extract_domain(item.get("url", ""))
+                    }
+                })
+            
+            return articles
+        except Exception as e:
+            print(f"Error fetching news from Finnhub: {e}")
+            return []
+    
+    def _extract_domain(self, url: str) -> str:
+        """Extract domain from URL"""
+        try:
+            from urllib.parse import urlparse
+            parsed_url = urlparse(url)
+            domain = parsed_url.netloc
+            # Remove www. prefix if present
+            if domain.startswith("www."):
+                domain = domain[4:]
+            return domain
+        except:
+            return ""
+    
+    def _deduplicate_news(self, news_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Remove duplicate news articles based on URL"""
+        unique_urls = set()
+        unique_news = []
+        
+        for news in news_list:
+            url = news.get("url", "")
+            if url and url not in unique_urls:
+                unique_urls.add(url)
+                unique_news.append(news)
+        
+        return unique_news
+
+# Database access functions (preserving existing functionality)
 def get_news_by_ticker(
     db: Session, 
     ticker: str, 
@@ -133,3 +278,6 @@ def get_bias_distribution(
         is_biased=is_biased,
         dominant_bias=dominant_bias
     )
+
+# Create singleton instance
+news_service = NewsService()

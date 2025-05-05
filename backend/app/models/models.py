@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Text, Enum, ARRAY
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Text, Enum, ARRAY, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
+import json
+import os
 
 from app.db.session import Base
 from app.models.schemas import BiasCategory, SentimentCategory
@@ -19,10 +21,25 @@ class Article(Base):
     source = Column(String, nullable=False)
     bias_label = Column(Enum(BiasCategory), nullable=False)
     sentiment_label = Column(Enum(SentimentCategory), nullable=False)
+    sentiment_confidence = Column(Float, nullable=True)
+    bias_score = Column(Float, nullable=True)
     published_date = Column(DateTime, nullable=False, index=True)
-    embedding_vector = Column(ARRAY(Float), nullable=True)
+    embedding_vector = Column(Text if "sqlite" in os.getenv("DATABASE_URL", "").lower() else ARRAY(Float), nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    def set_embedding_vector(self, vector):
+        """Set the embedding vector, handling the storage format based on the database type."""
+        if isinstance(self.embedding_vector, str) or "sqlite" in os.getenv("DATABASE_URL", "").lower():
+            self.embedding_vector = json.dumps(vector)
+        else:
+            self.embedding_vector = vector
+
+    def get_embedding_vector(self):
+        """Get the embedding vector, handling the storage format based on the database type."""
+        if isinstance(self.embedding_vector, str):
+            return json.loads(self.embedding_vector)
+        return self.embedding_vector
 
 
 class Source(Base):
