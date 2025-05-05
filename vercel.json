@@ -1,35 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "backend/app/main.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "rootDirectory": "frontend",
-        "installCommand": "npm ci --include=dev",
-        "buildCommand": "npm run build",
-        "distDir": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "backend/app/main.py"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/dist/index.html"
-    }
-  ],
-  "env": {
-    "NPM_CONFIG_PRODUCTION": "false"
-  }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/backend/app/main.py" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
